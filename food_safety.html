@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8"><title>Headline Browser</title>
+
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="./food_safety.css">
+
+<style>
+html,body,h1,h2,h3,h4,h5 {font-family: "Raleway", sans-serif}
+td, tr {vertical-align: top}
+.autocomplete {
+  /*the container must be positioned relative:*/
+  position: relative;
+  display: inline-block;
+}
+.autocomplete-items div {
+  padding: 10px;
+  cursor: pointer;
+  background-color: #fff;
+  border-bottom: 1px solid #d4d4d4;
+}
+.autocomplete-items div:hover {
+  /*when hovering an item:*/
+  background-color: #e9e9e9;
+}
+.autocomplete-active {
+  /*when navigating through the items using the arrow keys:*/
+  background-color: DodgerBlue !important;
+  color: #ffffff;
+}
+</style>
+
+<script type='text/javascript' src='/eel.js'></script>
+<script type='text/javascript' src='/food_safety.js'></script>
+
+</head>
+
+<body class="w3-light-grey" style="margin-left:5px;">
+
+
+<div class="w3-top w3-black">
+  <span class="w3-bar-item">Food Safety Extractor</span>
+</div>
+
+<!-- !PAGE CONTENT! -->
+<div class="w3-main" style="margin-left:10px;margin-top:40px;">
+
+<table id="annotation_table" style="display:hide;"><tr><td>
+<!-- <form autocomplete="off" action="./"> -->
+
+	<table>
+		<tr><td>Hazard:</td><td><input type="text" name="hazard" id="hazard"  class="autocomplete"></td></tr>
+		<tr><td>Food :</td><td><input type="text" name="food" id="food" class="autocomplete"></td></tr>
+		<tr><td>Origin:</td><td><input type="text" name="origin" id="origin"  class="autocomplete"></td></tr>
+		<tr><td>Destination:</td><td><input type="text" name="destination" id="destination"  class="autocomplete"></td></tr>
+	</table>
+	
+	<input type="hidden" id="report_id">  
+	<input type="hidden" id="report_text">  
+	<input type="hidden" id="report_date">  
+	
+<!-- </form> -->
+</td>
+<td>
+<div id="annotation" class="w3-left w3-striped w3-bordered w3-border" style="background-color:white; padding:10px; margin-top:10px;"></div>
+</td>
+</tr>
+</table>
+
+<button onclick="save_report();" id="get_report">Save</button></h5>
+
+
+<script>
+autocomplete(document.getElementById("food"), ["peanut butter","jelly"]);
+</script>
+
+</body></html>
