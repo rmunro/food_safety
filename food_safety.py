@@ -31,7 +31,8 @@ unlabeled_data = []
 unlabeled_data_path = "safety_reports_v1.csv.gz"
 
 labeled_data = []
-labeled_data_path = "safety_reports_labeled.csv"
+labeled_data_path = "data/safety_reports_labeled.csv"
+heldout_data_path = "data/safety_reports_labeled.csv"
 
 labeled_ids = {} # track already-labeled data
 
@@ -46,6 +47,7 @@ def save_report(report):
     global labeled_data
     global labeled_ids
     global labeled_data_path
+    global heldout_data_path
     global new_annotation_count
 
     report_id = report[0]
@@ -97,11 +99,25 @@ def save_report(report):
     
     labeled_ids[report_id] = True
 
-    append_data(labeled_data_path,[report])
-    labeled_data.append(report)
-    
-    new_annotation_count += 1
+    if is_heldout(report_text):
+        append_data(healdout_data_path,[report])
+    else
+        append_data(labeled_data_path,[report])
+        labeled_data.append(report)
+        new_annotation_count += 1
 
+
+
+
+def is_heldout(text):
+    hexval = hashlib.md5(text.encode('utf-8')).hexdigest()
+    intval = int(hexval, 16)
+
+    if intval%4 == 0:
+        return True
+    else:
+        return False
+   
 
     
 # get the per-token labels for annotation within text
