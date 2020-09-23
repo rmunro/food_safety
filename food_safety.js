@@ -18,9 +18,13 @@ async function save_report(){
     
     saved = await eel.save_report([report_id, report, report_date, food, hazard, origin, destination])(); // Call to python function
     
+    get_next_report();
+}
+
+async function get_next_report(){   
+   
     // GET NEXT REPORT
     report = await eel.get_next_report()(); // Call to python function
-    console.log(report);
 
     report_id = report[0];    
     report_text = report[1];
@@ -29,8 +33,8 @@ async function save_report(){
     
     document.getElementById('report_id').value = report_id;    
     document.getElementById('report_text').value = report_text;    
-    document.getElementById('report_date').value = report_date;    
     document.getElementById('annotation').innerHTML = report_text;
+    document.getElementById('report_date').value = report_date;    
 
     document.getElementById('hazard').value = "";
     document.getElementById('food').value = "";
@@ -62,7 +66,6 @@ async function get_candidate_spans(text){
     autocomplete(document.getElementById("origin"), origin);
     autocomplete(document.getElementById("destination"), destination);
 }
-
 
 
 /*
@@ -167,4 +170,7 @@ document.addEventListener("click", function (e) {
     closeAllLists(e.target);
 });
 }
+
+
+
         

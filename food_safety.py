@@ -31,8 +31,8 @@ unlabeled_data = []
 unlabeled_data_path = "safety_reports_v1.csv.gz"
 
 labeled_data = []
-labeled_data_path = "data/safety_reports_labeled.csv"
-heldout_data_path = "data/safety_reports_labeled.csv"
+labeled_data_path = "data/safety_reports_training.csv"
+heldout_data_path = "data/safety_reports_heldout.csv"
 
 labeled_ids = {} # track already-labeled data
 
@@ -100,8 +100,8 @@ def save_report(report):
     labeled_ids[report_id] = True
 
     if is_heldout(report_text):
-        append_data(healdout_data_path,[report])
-    else
+        append_data(heldout_data_path,[report])
+    else:
         append_data(labeled_data_path,[report])
         labeled_data.append(report)
         new_annotation_count += 1
@@ -190,7 +190,7 @@ def get_candidate_spans(text, use_model_predictions=True, use_ngrams=True):
         spans[label] = []
 
     # MODEL PREDICTIONS GET TOP PRIORITY
-    if use_model_predictions:
+    if use_model_predictions and current_model != None:
         spans = get_predictions(current_model, text)
 
     # NGRAMS WITHIN THE TEXT ARE NEXT PRIORITY
