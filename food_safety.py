@@ -4,6 +4,7 @@ import gzip
 import csv
 import hashlib
 import json
+import shutil
 from datetime import datetime
 from random import shuffle
 
@@ -31,8 +32,9 @@ unlabeled_data = []
 unlabeled_data_path = "safety_reports_v1.csv.gz"
 
 labeled_data = []
+evaluation_data = []
 labeled_data_path = "data/safety_reports_training.csv"
-heldout_data_path = "data/safety_reports_heldout.csv"
+evaluation_data_path = "data/safety_reports_evaluation.csv"
 
 labeled_ids = {} # track already-labeled data
 
@@ -43,11 +45,13 @@ verbose = True
 
 @eel.expose
 def save_report(report):
+    '''Save annotated report 
+    '''
     global label_indexes
     global labeled_data
     global labeled_ids
     global labeled_data_path
-    global heldout_data_path
+    global evaluation_data_path
     global new_annotation_count
 
     report_id = report[0]
@@ -67,10 +71,6 @@ def save_report(report):
     origin_labels = get_labels_from_text(report_text, report_origin, label_indexes["Origin"])
     destination_labels = get_labels_from_text(report_text, report_destination, label_indexes["Destination"])
     
-    print(hazard_labels)
-    print(food_labels)
-    print(origin_labels)
-    print(destination_labels)
     
     text_labels = []
     numerical_labels = []
@@ -99,8 +99,9 @@ def save_report(report):
     
     labeled_ids[report_id] = True
 
-    if is_heldout(report_text):
-        append_data(heldout_data_path,[report])
+    if is_evaluation(report_text):
+        append_data(evaluation_data_path,[report])
+        evaluation_data.append(report)
     else:
         append_data(labeled_data_path,[report])
         labeled_data.append(report)
@@ -109,7 +110,7 @@ def save_report(report):
 
 
 
-def is_heldout(text):
+def is_evaluation(text):
     hexval = hashlib.md5(text.encode('utf-8')).hexdigest()
     intval = int(hexval, 16)
 
@@ -119,15 +120,16 @@ def is_heldout(text):
         return False
    
 
-    
-# get the per-token labels for annotation within text
-# gets first match
+
 def get_labels_from_text(text, annotation, label=1):
+    '''Returns the per-token labels for annotation within text
+       
+    Note: returns the first match only
+              
+    '''
     tokens = tokenizer.tokenize(text)
     annotation_tokens = tokenizer.tokenize(annotation)
-    print(tokens)
-    print(annotation_tokens)
-    
+     
     if len(annotation_tokens) == 0:
         return [0] * len(tokens)
 
@@ -154,16 +156,12 @@ def get_labels_from_text(text, annotation, label=1):
     return labels
     
 
-@eel.expose
-def pick_file(folder):
-    if os.path.isdir(folder):
-        return random.choice(os.listdir(folder))
-    else:
-        return 'Not valid folder'
 
 
 @eel.expose
 def get_next_report():
+    '''Gets next report chronologically      
+    '''
     global unlabeled_data
     for report in unlabeled_data:
         report_id = report[0]
@@ -175,6 +173,16 @@ def get_next_report():
     
 @eel.expose
 def get_candidate_spans(text, use_model_predictions=True, use_ngrams=True):
+    '''Returns the potential spans in the text
+
+    Uses all ngrams in the text if no model exists 
+    
+    Uses model predictions if a model exists 
+       
+    When a model exists, backs off to ngrams 
+    by having them lower ranked than model predictions
+              
+    '''
     global current_model
     global label_indexes 
     
@@ -202,14 +210,15 @@ def get_candidate_spans(text, use_model_predictions=True, use_ngrams=True):
                 if ngram not in candidates:
                     candidates.append(ngram)    
             spans[label] = candidates
-  
-    print(spans)
-      
+        
     return spans
     
 
+
+
 def get_ngrams(text, min_len=3,max_len=50):
-    print("ngrams from "+text)
+    '''Returns character ngrams between given lengths
+    '''
     ngrams = []
     for start_ind in range(0, len(text)):
         if start_ind == 0 or (re.match("\W", text[start_ind-1]) and re.match("\w", text[start_ind])):
@@ -223,6 +232,7 @@ def get_ngrams(text, min_len=3,max_len=50):
     return ngrams
 
 
+
 def append_data(filepath, data):
     with open(filepath, 'a', errors='replace') as csvfile:
         writer = csv.writer(csvfile)
@@ -233,20 +243,61 @@ def append_data(filepath, data):
 
 
 def load_reports(filepath):
-    # FOR ALREADY LABELED ONLY
-    # csv format: [DATE, TEXT, URL,...]
+    '''Loads already-annotated data
+    '''
     if not os.path.exists(filepath):
         return []
     
+    new_data = []
     with open(filepath, 'r') as csvfile:
         reader = csv.reader(csvfile)
         for item in reader:
             labeled_ids[item[0]] = True # record this is now labeled
-            labeled_data.append(item)
+            new_data.append(item)
+
+    return new_data
+
+
+
+@eel.expose
+def get_recent_reports(origin = "", hazard = "", food = ""):
+    '''Loads reports in reverse chronological order
+    
+    Reports must match at least one of origin, hazard, or food
+    '''
+    global labeled_data
+    global evaluation_data
+
+    all_reports = labeled_data + evaluation_data
+    
+    all_reports.sort(reverse=True, key=lambda x: x[0]) 
+    
+    relevant_reports = []
+    
+    for report in all_reports:
+        country_match = False
+        if origin == report[5] and origin != "":
+            country_match = True
+        
+        hazard_match = False
+        if hazard == report[4] and hazard != "":
+            hazard_match = True
+        
+        food_match = False
+        if food == report[3] and food != "":
+            food_match = True
+        
+        if country_match or hazard_match or food_match:
+            relevant_reports.append(report)
+    
+    return relevant_reports   
 
 
 
 def get_predictions(model, text):
+    '''Get model predictions of potential spans within the text
+    '''
+
     inputs = tokenizer(text, return_tensors="pt")
     
     candidates_by_label = {}
@@ -260,8 +311,6 @@ def get_predictions(model, text):
         for ind in range(0, len(tokens)):
             token = tokens[ind]
             prob_dist = torch.softmax(logits[ind], dim=0)
-            # print(token)
-            # print(prob_dist)
 
         for label in label_indexes:
             
@@ -278,8 +327,6 @@ def get_predictions(model, text):
                 ratio_conf = 1 - conf/max_conf
                     
                 uncertainties.append(ratio_conf.item())
-
-            print(label+" "+str(uncertainties))
             
             candidates = get_most_confident_spans(text, uncertainties, threshold=0.2)
             less_conf_candidates = get_most_confident_spans(text, uncertainties, threshold=0.6)
@@ -294,6 +341,8 @@ def get_predictions(model, text):
             
             
 def convert_tokens_to_text(tokens, reference_text):
+    '''Find best match for DistilBert tokens in the actual text
+    '''
     text = tokenizer.convert_tokens_to_string(tokens) 
     if text in reference_text:
         return text
@@ -309,8 +358,10 @@ def convert_tokens_to_text(tokens, reference_text):
 
 
 
-# get best sequences
 def get_most_confident_spans(text, uncertainties, threshold=0.5):
+    '''Get all spans above the threshold in confidence 
+    '''
+
     tokens = tokenizer.tokenize(text)
 
     candidates = []
@@ -381,23 +432,69 @@ def retrain(epochs_per_item=2, min_to_train=5):
          
 
             eel.sleep(0.01) # allow other processes through
+
  
     '''
-    new_fscore = evaluate_model(new_model)
-    current_fscore = evaluate_model(current_model)
-      
-    if(new_fscore > current_fscore):
-        print("replacing model!")
-        current_model = new_model
-        get_uncertainty()
-    else:
-        print("staying with old model")
+    MODEL EVALUATION CODE HERE IF YOU WANT TO TEST THAT IT IS GETTING BETTER    
     '''
     
     current_model = new_model
+    
+    timestamp = re.sub('\.[0-9]*','_',str(datetime.now())).replace(" ", "_").replace("-", "").replace(":","")
+    number_items = str(len(labeled_data))              
+                     
+    model_path = "models/"+timestamp+number_items+".model"
+    current_model.save_pretrained(model_path)
+    if verbose:
+        print("saved model to "+model_path)
+    clean_old_models()
+    
         
     currently_training = False
 
+
+
+
+def clean_old_models(max_prior=4):
+     models = []
+     
+     files = os.listdir('models/') 
+     for file_name in files:
+         if os.path.isdir('models/'+file_name):
+             if file_name.endswith(".model"):
+                 models.append('models/'+file_name)
+    
+     if len(models) > max_prior:
+         for filepath in models[:-4]:
+             assert("models" in filepath and ".model" in filepath)
+             if verbose:
+                 print("removing old model "+filepath)
+             shutil.rmtree(filepath)
+    
+    
+    
+
+def load_existing_model():
+    global current_model 
+
+    model_path = ""
+    
+    files = os.listdir('models') 
+    for file_name in files:
+        if file_name.endswith(".model"):
+            model_path = 'models/'+file_name
+                
+    if model_path != '':    
+        if verbose:
+            print("Loading model from "+model_path)
+        current_model = DistilBertForSequenceClassification.from_pretrained(model_path, num_labels=5)
+        eel.sleep(0.1)
+        # get_predictions()
+    else:
+        if verbose:
+            print("Creating new uninitialized model (OK to ignore warnings)")
+
+        current_model = DistilBertForTokenClassification.from_pretrained('distilbert-base-uncased', num_labels=5)
 
 
 
@@ -414,7 +511,7 @@ def check_to_train():
         
         # print(ct)
        
-        eel.sleep(10)                  # Use eel.sleep(), not time.sleep()
+        eel.sleep(10) # Use eel.sleep(), not time.sleep()
 
 eel.spawn(check_to_train)
 
@@ -426,7 +523,8 @@ csvobj = csv.reader(unlabeled_file,delimiter = ',',quotechar='"')
 for row in csvobj:
     unlabeled_data.append(row)
 
-load_reports(labeled_data_path)
+labeled_data = load_reports(labeled_data_path)
+evaluation_data = load_reports(evaluation_data_path)
 
 
 eel.start('food_safety.html', size=(800, 600))

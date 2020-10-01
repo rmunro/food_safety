@@ -1,6 +1,13 @@
 
 
-// var data = []
+// GLOBAL VARIABLES
+var world_map;                        // this is the leaflet map object for the world
+var europe_map;                        // the leaflet map object for europe
+var world_countries_layer;            // leaflet layer object for the world countries
+var europe_countries_layer;            // leaflet layer object for europe countries (data actually contain all counties, map is just limited to the europe region
+var selected_europe_country;        // the europe country that is currently highlighted on the map and selected in the radio button group
+var selected_world_countries = [];    // list of all currently selected world countries
+
  
 async function save_report(){   
     // TODO: SAVE
@@ -66,6 +73,69 @@ async function get_candidate_spans(text){
     autocomplete(document.getElementById("origin"), origin);
     autocomplete(document.getElementById("destination"), destination);
 }
+
+
+var current_details = "";
+
+
+
+async function get_recent_reports(max=10){
+    origin = document.getElementById("origin").value;
+    hazard = document.getElementById("hazard").value;
+    food = document.getElementById("food").value;
+    
+    combined = origin+hazard+food;
+    if(combined != current_details){
+        current_details = combined;
+        reports = await eel.get_recent_reports(origin, hazard, food)();
+        
+        console.log(combined);
+        
+        if(reports.length > 0){
+            reports_div = document.getElementById("relevant_reports");
+            reports_div.innerHTML = "<h4>Relevant Recent Reports:</h4>";                
+            for(var i=0; i < reports.length; i++){
+                report_date = reports[i][0]
+                report_text = reports[i][1];
+                
+                if(origin.length > 0){
+                    report_text = report_text.replace(origin,"<b>"+origin+"</b>");
+                }
+                if(hazard.length > 0){
+                    report_text = report_text.replace(hazard,"<b>"+hazard+"</b>");
+                }
+                if(food.length > 0){
+                    report_text = report_text.replace(food,"<b>"+food+"</b>");
+                }
+                reports_div.innerHTML += "<p>"+report_date+": "+report_text+"</p>";
+            }
+        }
+    }
+
+     
+}
+
+
+/**
+ * Monitor for tab to indicate completed field
+ */
+document.addEventListener("keypress", function onEvent(event) {
+    console.log(event);
+    if (event.key === "a") {
+        add_annotation(true);
+    }
+    
+});
+
+/**
+ * Monitor for click that changes conditions
+ */
+document.addEventListener("click", function onEvent(event) {
+    get_recent_reports();
+    
+});
+
+
 
 
 /*
