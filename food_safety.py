@@ -217,7 +217,7 @@ def get_candidate_spans(text, use_model_predictions=True, use_ngrams=True):
 
 
 def get_ngrams(text, min_len=3,max_len=50):
-    '''Returns character ngrams between given lengths
+    '''Returns word ngrams between given character lengths
     '''
     ngrams = []
     for start_ind in range(0, len(text)):
