@@ -9,9 +9,7 @@ var selected_europe_country;        // the europe country that is currently high
 var selected_world_countries = [];    // list of all currently selected world countries
 
  
-async function save_report(){   
-    // TODO: SAVE
-    
+async function save_report(){       
     hazard = document.getElementById('hazard').value;
     food = document.getElementById('food').value;
     origin = document.getElementById('origin').value;
@@ -111,29 +109,14 @@ async function get_recent_reports(max=10){
             }
         }
     }
+    
+    setTimeout(get_recent_reports, 2000);
 
      
 }
 
+setTimeout(get_recent_reports, 5000);
 
-/**
- * Monitor for tab to indicate completed field
- */
-document.addEventListener("keypress", function onEvent(event) {
-    console.log(event);
-    if (event.key === "a") {
-        add_annotation(true);
-    }
-    
-});
-
-/**
- * Monitor for click that changes conditions
- */
-document.addEventListener("click", function onEvent(event) {
-    get_recent_reports();
-    
-});
 
 
 

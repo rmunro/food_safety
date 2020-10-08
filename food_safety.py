@@ -1,4 +1,6 @@
-import eel, os, random, sys, re
+import eel
+import os 
+import re
 import time
 import gzip
 import csv
@@ -308,10 +310,8 @@ def get_predictions(model, text):
         logits = outputs[0][0]
 
         tokens = [""] + tokenizer.tokenize(text) + [""]
-        for ind in range(0, len(tokens)):
-            token = tokens[ind]
-            prob_dist = torch.softmax(logits[ind], dim=0)
-
+        
+        # iterate all predicted labels 
         for label in label_indexes:
             
             label_number = label_indexes[label]
